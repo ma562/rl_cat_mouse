@@ -390,7 +390,7 @@ class Cat {
     this.image.src = 'cat3.png';
     this.radius = 18; // Adjust the radius of the player image
     this.go_flag = false;
-    this.speed = 1;
+    this.speed = 40;
     this.speed_level = -1;
     this.movement_in_progress = false;
     // this.update_iteration = 0;
@@ -702,7 +702,7 @@ function updateScoreboard(shouldIncreaseScore) {
 
   // Display the scores on the scoreboard element
   const scoreboardElement = document.getElementById('scoreboard');
-  scoreboardElement.textContent = 'Score: ' + currentScore + ' - High Score: ' + highScore;
+  scoreboardElement.textContent = 'Episode: ' + currentScore + ' - Epsilon: ' + highScore;
 
 
   // Get the size of the maze (canvas) and the scoreboard element
@@ -752,6 +752,8 @@ const player = new Player({
 	 }
 })
 
+console.log(player.position);
+
 map.forEach((row, i) => {
 	row.forEach((symbol, j) => {
 		switch (symbol) {
@@ -800,8 +802,16 @@ function checkCollisionAndRestart() {
     if (!gameOver && checkCollision(player.position.x, player.position.y, myCats[i].position.x, myCats[i].position.y)) {
       gameOver = true;
       localStorage.setItem('currentScore', 0);
-      alert("Game Over");
-      window.location.reload();
+      console.log("game over LOL");
+      updateScoreboard(true);
+      player.position.x = startingX + (Boundary.width * (map[0].length - 4));
+      player.position.y = startingY + (Boundary.width * (map.length - 3))
+      player.blockage = true;
+      console.log("HERE");
+      console.log(player.position);
+      myCats[0].position.x = startingX;
+      myCats[0].position.y = startingY;
+      
     }
   }
 }
@@ -816,7 +826,7 @@ function getRandomSpeed(arr) {
 
 
 function animate() {
-
+  gameOver = false;
   checkCollisionAndRestart();
   updateScoreboard(false);
 
@@ -869,14 +879,9 @@ function animate() {
 			rectangle: boundary
 			})
 		) {
-			// player.movement_in_progress = false;
-			// player.velocity.x = 0
 			player.blockage = true;
 			break
 		} else {
-			// player.movement_in_progress = true;
-			// player.velocity.x = -player.my_velocity;
-			// player.velocity.y = 0
 			player.blockage = false;
 		}
 		}
@@ -895,15 +900,11 @@ function animate() {
 			rectangle: boundary
 			})
 		) {
-			// player.movement_in_progress = false;
-			// player.velocity.y = 0
 			player.blockage = true;
 			break
 		} else {
 			player.blockage = false;
-			// player.movement_in_progress = true;
-			// player.velocity.x = 0
-			// player.velocity.y = player.my_velocity;
+
 		}
 		}
 	}
@@ -921,15 +922,11 @@ function animate() {
 			rectangle: boundary
 			})
 		) {
-			// player.movement_in_progress = false;
-			// player.velocity.x = 0
+
 			player.blockage = true;
 			break
 		} else {
 			player.blockage = false;
-			// player.movement_in_progress = true;
-			// player.velocity.x = player.my_velocity;
-			// player.velocity.y = 0
 		}
 		}
 	}
@@ -941,14 +938,12 @@ function animate() {
 			rectangle: boundary
 		})) {
 			player.blockage = true;
-			// player.movement_in_progress = false;
-			// player.velocity.x = 0
-			// player.velocity.y = 0
 		}
 
 	})
 
-	if(!player.blockage) {
+	if(!player.blockage && !gameOver) {
+    console.log("entered");
 	direction_row = get_continuous_X(player.future_row) - player.position.y;
 	direction_col = get_continuous_Y(player.future_col) - player.position.x;
 
@@ -1019,7 +1014,6 @@ function animate() {
     }
 	}
 
-
 	player.draw();
   
 
@@ -1048,8 +1042,8 @@ function animate() {
 
 	
 
-
-  for(let i = 0; i < myCats.length; i++) {
+  if(animate_iteration % 25 === 0) {
+    for(let i = 0; i < myCats.length; i++) {
     if((myCats[i].rows.length !== 0) && (myCats[i].col.length !== 0) && (myCats[i].rows[myCats[i].path_iterations] !== -1) && (myCats[i].col[myCats[i].path_iterations] !== -1)) {
     
     //NOTE EACH CAT NEEDS IT'S OWN FRIGGIN UPDATE ITERATION
@@ -1142,6 +1136,7 @@ function animate() {
     myCats[i].path_iterations = 0;
 
     myCats[i].go_flags = false;    //reset go_flag so we have to wait until the next iteration to update shortest path
+  }
   }
   }
 
