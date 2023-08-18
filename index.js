@@ -186,6 +186,39 @@ if (randomMapKey) {
   }
 }
 
+function playerCollides(inputArray, row, col) {
+
+    const innerBox = [];
+    for (let i = 1; i < 14; i++) {
+        innerBox.push(inputArray[i].slice(1, 14));
+    }
+
+    if (row < 0 || row >= innerBox.length || col < 0 || col >= innerBox[0].length) {
+        return true;
+    }
+
+    return innerBox[row][col] === '-';
+}
+
+// console.log(extractInnerBox(map));
+
+// Initialize Q-table
+  const qTable = {};
+  for (let i = - + 1; i < (map.length - 2); i++) {
+    for (let ii = -(map.length - 2) + 1; ii < (map.length - 2); ii++) {
+      for (let iii = -(map.length - 2) + 1; iii < (map.length - 2); iii++) {
+        for (let iiii = -(map.length - 2) + 1; iiii < (map.length - 2); iiii++) {
+          qTable[`${i}_${ii}_${iii}_${iiii}`] = [
+            Math.random() * -5,
+            Math.random() * -5,
+            Math.random() * -5,
+            Math.random() * -5,
+          ];
+        }
+      }
+    }
+  }
+
 class PriorityQueue {
   constructor() {
     this.heap = [];
@@ -332,7 +365,7 @@ class Player {
     this.movement_in_progress = false;
     this.future_row = -1;
     this.future_col = -1;
-    this.blockage = true;
+    this.blockage = false;
       //this used to be 18 so used the adjustment factor of 18 - this.radius when calculating fastest times
     this.radius = 18; // Adjust the radius of the player image
     this.my_velocity = VELOCITY;
@@ -376,6 +409,26 @@ class Player {
 
   updateMouseImage() {
   	this.image.src = "mouse3.png";
+  }
+
+  action(choice) {
+    if (choice === 0) {
+      //W
+      this.future_row = get_discrete_Y(this.position.y) - 1;
+      this.future_col = get_discrete_X(this.position.x);
+    } else if (choice === 1) {
+      //A
+      this.future_row = get_discrete_Y(this.position.y);
+      this.future_col = get_discrete_X(this.position.x) - 1;
+    } else if (choice === 2) {
+      //S
+      this.future_row = get_discrete_Y(this.position.y) + 1;
+      this.future_col = get_discrete_X(this.position.x);
+    } else if (choice === 3) {
+      //D
+      this.future_row = get_discrete_Y(this.position.y);
+      this.future_col = get_discrete_X(this.position.x) + 1;
+    }
   }
 
 }
@@ -426,13 +479,6 @@ class Cat {
   updateCatImage() {
   	this.image.src = "cat3.png";
   }
-
-
-  // increaseSpeed() {
-  //   if(this.speed_level !== 3) {
-  //     this.speed_level++;
-  //   }
-  // }
 
 	update() {
 		this.draw()
@@ -752,8 +798,6 @@ const player = new Player({
 	 }
 })
 
-console.log(player.position);
-
 map.forEach((row, i) => {
 	row.forEach((symbol, j) => {
 		switch (symbol) {
@@ -807,8 +851,7 @@ function checkCollisionAndRestart() {
       player.position.x = startingX + (Boundary.width * (map[0].length - 4));
       player.position.y = startingY + (Boundary.width * (map.length - 3))
       player.blockage = true;
-      console.log("HERE");
-      console.log(player.position);
+
       myCats[0].position.x = startingX;
       myCats[0].position.y = startingY;
       
@@ -841,95 +884,94 @@ function animate() {
 
 	animate_iteration++;
 
-	if (keys.w.pressed) {
-		for (let i = 0; i < boundaries.length; i++) {
-		const boundary = boundaries[i]
-		if (circleCollidesWithRectangle({
-			circle: {
-				...player, 
-				velocity: {
-					x: 0,
-					y: -player.my_velocity
-				}
-			},
-			rectangle: boundary
-			})
-		) {
-			// player.movement_in_progress = false;
-			player.blockage = true;
-			// player.velocity.y = 0
-			break
-		} else {
+	// if (keys.w.pressed) {
+	// 	for (let i = 0; i < boundaries.length; i++) {
+	// 	const boundary = boundaries[i]
+	// 	if (circleCollidesWithRectangle({
+	// 		circle: {
+	// 			...player, 
+	// 			velocity: {
+	// 				x: 0,
+	// 				y: -player.my_velocity
+	// 			}
+	// 		},
+	// 		rectangle: boundary
+	// 		})
+	// 	) {
+	// 		// player.movement_in_progress = false;
+	// 		player.blockage = true;
+	// 		// player.velocity.y = 0
+	// 		break
+	// 	} else {
+	// 		player.blockage = false;
+	// 	}
+	// 	}
+	// }
+	// else if (keys.a.pressed) {
+	// 	for (let i = 0; i < boundaries.length; i++) {
+	// 	const boundary = boundaries[i]
+	// 	if (circleCollidesWithRectangle({
+	// 		circle: {
+	// 			...player, 
+	// 			velocity: {
+	// 				x: -player.my_velocity,
+	// 				y: 0
+	// 			}
+	// 		},
+	// 		rectangle: boundary
+	// 		})
+	// 	) {
+	// 		player.blockage = true;
+	// 		break
+	// 	} else {
+	// 		player.blockage = false;
+	// 	}
+	// 	}
+	// }
+	// else if (keys.s.pressed) {
+	// 	for (let i = 0; i < boundaries.length; i++) {
+	// 	const boundary = boundaries[i]
+	// 	if (circleCollidesWithRectangle({
+	// 		circle: {
+	// 			...player, 
+	// 			velocity: {
+	// 				x: 0,
+	// 				y: player.my_velocity
+	// 			}
+	// 		},
+	// 		rectangle: boundary
+	// 		})
+	// 	) {
+	// 		player.blockage = true;
+	// 		break
+	// 	} else {
+	// 		player.blockage = false;
 
-			player.blockage = false;
-		}
-		}
-	}
-	else if (keys.a.pressed) {
-		for (let i = 0; i < boundaries.length; i++) {
-		const boundary = boundaries[i]
-		if (circleCollidesWithRectangle({
-			circle: {
-				...player, 
-				velocity: {
-					x: -player.my_velocity,
-					y: 0
-				}
-			},
-			rectangle: boundary
-			})
-		) {
-			player.blockage = true;
-			break
-		} else {
-			player.blockage = false;
-		}
-		}
-	}
-	else if (keys.s.pressed) {
-		for (let i = 0; i < boundaries.length; i++) {
-		const boundary = boundaries[i]
-		if (circleCollidesWithRectangle({
-			circle: {
-				...player, 
-				velocity: {
-					x: 0,
-					y: player.my_velocity
-				}
-			},
-			rectangle: boundary
-			})
-		) {
-			player.blockage = true;
-			break
-		} else {
-			player.blockage = false;
+	// 	}
+	// 	}
+	// }
+	// else if (keys.d.pressed) {
+	// 	for (let i = 0; i < boundaries.length; i++) {
+	// 	const boundary = boundaries[i]
+	// 	if (circleCollidesWithRectangle({
+	// 		circle: {
+	// 			...player, 
+	// 			velocity: {
+	// 				x: player.my_velocity,
+	// 				y: 0
+	// 			}
+	// 		},
+	// 		rectangle: boundary
+	// 		})
+	// 	) {
 
-		}
-		}
-	}
-	else if (keys.d.pressed) {
-		for (let i = 0; i < boundaries.length; i++) {
-		const boundary = boundaries[i]
-		if (circleCollidesWithRectangle({
-			circle: {
-				...player, 
-				velocity: {
-					x: player.my_velocity,
-					y: 0
-				}
-			},
-			rectangle: boundary
-			})
-		) {
-
-			player.blockage = true;
-			break
-		} else {
-			player.blockage = false;
-		}
-		}
-	}
+	// 		player.blockage = true;
+	// 		break
+	// 	} else {
+	// 		player.blockage = false;
+	// 	}
+	// 	}
+	// }
 
 	boundaries.forEach((boundary) => {
 		boundary.draw()
@@ -938,81 +980,9 @@ function animate() {
 			rectangle: boundary
 		})) {
 			player.blockage = true;
+      console.log("illegal detected");
 		}
-
 	})
-
-	if(!player.blockage && !gameOver) {
-    console.log("entered");
-	direction_row = get_continuous_X(player.future_row) - player.position.y;
-	direction_col = get_continuous_Y(player.future_col) - player.position.x;
-
-	if (direction_row) {
-	    direction_row = direction_row > 0 ? 1 : -1;
-	} else {
-	    direction_row = 0;
-	}
-
-	if (direction_col) {
-	    direction_col = direction_col > 0 ? 1 : -1;
-	} else {
-	    direction_col = 0;
-	}
-
-	new_row = player.position.y + direction_row * VELOCITY;
-  new_col = player.position.x + direction_col * VELOCITY;
-
-  if (
-  (new_row < get_continuous_X(player.future_row) && direction_row > 0) ||
-  (new_row > get_continuous_X(player.future_row) && direction_row < 0) ||
-  (new_col < get_continuous_Y(player.future_col) && direction_col > 0) ||
-  (new_col > get_continuous_Y(player.future_col) && direction_col < 0)
-  ) {
-  	player.movement_in_progress = true;
-  	go_to_row = get_continuous_X(player.future_row);
-  	go_to_col = get_continuous_Y(player.future_col);
-  	row_vector = go_to_row - player.position.y;
-  	col_vector = go_to_col - player.position.x;
-
-
-  	if(row_vector) {
-  	  if(row_vector > 0) {
-  	    player.position.y += VELOCITY;
-  	  }
-  	  else {
-  	    player.position.y -= VELOCITY;
-  	  }
-  	}
-  	else if(col_vector) {
-  	  if(col_vector > 0) {
-  	    player.position.x += VELOCITY;
-  	  }
-  	  else {
-  	    player.position.x -= VELOCITY;
-  	  }
-  	}
-  }
-
-  else if(
-    (new_row >= get_continuous_X(player.future_row) && direction_row > 0) ||
-    (new_row <= get_continuous_X(player.future_row) && direction_row < 0) ||
-    (new_col >= get_continuous_Y(player.future_col) && direction_col > 0) ||
-    (new_col <= get_continuous_Y(player.future_col) && direction_col < 0)
-    )
-    {
-      go_to_row = get_continuous_X(player.future_row);
-      go_to_col = get_continuous_Y(player.future_col);
-      row_vector = go_to_row - player.position.y;
-      col_vector = go_to_col - player.position.x;
-      if(row_vector) {
-        player.position.y = go_to_row;
-      }
-      else if(col_vector) {
-        player.position.x = go_to_col;
-      }
-      player.movement_in_progress = false;
-    }
-	}
 
 	player.draw();
   
@@ -1122,7 +1092,7 @@ function animate() {
     
   }
 
-    if(animate_iteration % 10 === 0) {
+    if(animate_iteration % 50 === 0) {
       myCats[i].go_flag = true;
     }
 
@@ -1132,11 +1102,92 @@ function animate() {
     my_matrix = read_write_values(map)
 
     fastestTimes(my_matrix, get_discrete_Y(myCats[i].position.y), get_discrete_X(myCats[i].position.x), get_discrete_Y(player.position.y), get_discrete_X(player.position.x), myCats[i].rows, myCats[i].col)
-    
     myCats[i].path_iterations = 0;
+    for(let test = 0; test < myCats[i].rows.length - 1; test++) {
+      if(playerCollides(map, myCats[i].rows[test], myCats[i].col[test])) {
+        console.log("WE HAVE A PROBLEM");
+      }
+    }
 
     myCats[i].go_flags = false;    //reset go_flag so we have to wait until the next iteration to update shortest path
   }
+  }
+  
+  const obs = `${get_discrete_X(player.position.x)}_${get_discrete_Y(player.position.y)}_${get_discrete_X(myCats[0].position.x)}_${get_discrete_Y(myCats[0].position.y)}`;
+
+  action = Math.floor(Math.random() * 4);
+  // console.log(action);
+  player.action(action);
+
+  if(!gameOver && !playerCollides(map, player.future_row, player.future_col)) {
+  direction_row = get_continuous_X(player.future_row) - player.position.y;
+  direction_col = get_continuous_Y(player.future_col) - player.position.x;
+
+  if (direction_row) {
+      direction_row = direction_row > 0 ? 1 : -1;
+  } else {
+      direction_row = 0;
+  }
+
+  if (direction_col) {
+      direction_col = direction_col > 0 ? 1 : -1;
+  } else {
+      direction_col = 0;
+  }
+
+  new_row = player.position.y + direction_row * VELOCITY;
+  new_col = player.position.x + direction_col * VELOCITY;
+
+  if (
+  (new_row < get_continuous_X(player.future_row) && direction_row > 0) ||
+  (new_row > get_continuous_X(player.future_row) && direction_row < 0) ||
+  (new_col < get_continuous_Y(player.future_col) && direction_col > 0) ||
+  (new_col > get_continuous_Y(player.future_col) && direction_col < 0)
+  ) {
+    player.movement_in_progress = true;
+    go_to_row = get_continuous_X(player.future_row);
+    go_to_col = get_continuous_Y(player.future_col);
+    row_vector = go_to_row - player.position.y;
+    col_vector = go_to_col - player.position.x;
+
+
+    if(row_vector) {
+      if(row_vector > 0) {
+        player.position.y += VELOCITY;
+      }
+      else {
+        player.position.y -= VELOCITY;
+      }
+    }
+    else if(col_vector) {
+      if(col_vector > 0) {
+        player.position.x += VELOCITY;
+      }
+      else {
+        player.position.x -= VELOCITY;
+      }
+    }
+  }
+
+  else if(
+    (new_row >= get_continuous_X(player.future_row) && direction_row > 0) ||
+    (new_row <= get_continuous_X(player.future_row) && direction_row < 0) ||
+    (new_col >= get_continuous_Y(player.future_col) && direction_col > 0) ||
+    (new_col <= get_continuous_Y(player.future_col) && direction_col < 0)
+    )
+    {
+      go_to_row = get_continuous_X(player.future_row);
+      go_to_col = get_continuous_Y(player.future_col);
+      row_vector = go_to_row - player.position.y;
+      col_vector = go_to_col - player.position.x;
+      if(row_vector) {
+        player.position.y = go_to_row;
+      }
+      else if(col_vector) {
+        player.position.x = go_to_col;
+      }
+      player.movement_in_progress = false;
+    }
   }
   }
 
@@ -1145,63 +1196,63 @@ function animate() {
 animate()
 
 
-window.addEventListener('keydown', ({key}) => {
-	switch (key) {
-		case 'w':
-			keys.w.pressed = true
-			player.future_row = get_discrete_Y(player.position.y) - 1;
-			player.future_col = get_discrete_X(player.position.x);
-			lastKey = 'w'
-			break
-		case 'a':
-			player.future_row = get_discrete_Y(player.position.y);
-			player.future_col = get_discrete_X(player.position.x) - 1;
-			keys.a.pressed = true
-			lastKey = 'a'
-			break
-		case 's':
-			player.future_row = get_discrete_Y(player.position.y) + 1;
-			player.future_col = get_discrete_X(player.position.x);
-			keys.s.pressed = true
-			lastKey = 's'
-			break
-		case 'd':
-			player.future_row = get_discrete_Y(player.position.y);
-			player.future_col = get_discrete_X(player.position.x) + 1;
-			keys.d.pressed = true
-			lastKey = 'd'
-			break
-	}
-})
+// window.addEventListener('keydown', ({key}) => {
+// 	switch (key) {
+// 		case 'w':
+// 			keys.w.pressed = true
+// 			player.future_row = get_discrete_Y(player.position.y) - 1;
+// 			player.future_col = get_discrete_X(player.position.x);
+// 			lastKey = 'w'
+// 			break
+// 		case 'a':
+// 			player.future_row = get_discrete_Y(player.position.y);
+// 			player.future_col = get_discrete_X(player.position.x) - 1;
+// 			keys.a.pressed = true
+// 			lastKey = 'a'
+// 			break
+// 		case 's':
+// 			player.future_row = get_discrete_Y(player.position.y) + 1;
+// 			player.future_col = get_discrete_X(player.position.x);
+// 			keys.s.pressed = true
+// 			lastKey = 's'
+// 			break
+// 		case 'd':
+// 			player.future_row = get_discrete_Y(player.position.y);
+// 			player.future_col = get_discrete_X(player.position.x) + 1;
+// 			keys.d.pressed = true
+// 			lastKey = 'd'
+// 			break
+// 	}
+// })
 
-window.addEventListener('keyup', ({key}) => {
-	switch (key) {
-		case 'w':
-			keys.w.pressed = false
-			if (lastKey === 'w') {
-        player.velocity.y = 0;
-      }
-			break
-		case 'a':
-			keys.a.pressed = false
-			if (lastKey === 'a') {
-        player.velocity.x = 0;
-      }
-			break
-		case 's':
-			keys.s.pressed = false
-			if (lastKey === 's') {
-        player.velocity.y = 0;
-      }
-			break
-		case 'd':
-			keys.d.pressed = false
-			if (lastKey === 'd') {
-        player.velocity.x = 0;
-      }
-			break
-	}
-})
+// window.addEventListener('keyup', ({key}) => {
+// 	switch (key) {
+// 		case 'w':
+// 			keys.w.pressed = false
+// 			if (lastKey === 'w') {
+//         player.velocity.y = 0;
+//       }
+// 			break
+// 		case 'a':
+// 			keys.a.pressed = false
+// 			if (lastKey === 'a') {
+//         player.velocity.x = 0;
+//       }
+// 			break
+// 		case 's':
+// 			keys.s.pressed = false
+// 			if (lastKey === 's') {
+//         player.velocity.y = 0;
+//       }
+// 			break
+// 		case 'd':
+// 			keys.d.pressed = false
+// 			if (lastKey === 'd') {
+//         player.velocity.x = 0;
+//       }
+// 			break
+// 	}
+// })
 
 
 
