@@ -9,20 +9,18 @@ let myCats = [];      //an array of cats
 // let my_speeds = [[0.5, 0.75, 1, 1.25, 1.5], [2, 2.25, 2.5], [3, 3.25, 3.5], [4, 4.25, 4.5]]  
 let my_speeds = [[0.5], [1.5], [2.5], [3.5]]
 let update_every = [[1500, 2500, 3200, 4000], [1000, 2000, 3000, 4000], [1800, 2800, 3800, 4800]];
-let direction_col;
-let direction_row;
-let new_row;
-let new_col;
-let go_to_row;
-let go_to_col;
-let row_vector;
-let col_vector;
-//first 5 levels consist of 1 cat
+let UPDATE_EVERY = 10;
 
 const currentScore = parseInt(localStorage.getItem('currentScore'));
 
 // Determine the value of numCats based on the conditions
 let numCats = 1;
+
+
+//MOUSE REINFORCEMENT LEARNING
+let EPSILON = 0.9;
+const EPS_DECAY = 0.9998;
+const DISCOUNT = 0.95;
 
 // Declare numCats as a global variable
 window.numCats = numCats;
@@ -832,22 +830,32 @@ function calculateDistance(x1, y1, x2, y2) {
 }
 
 function checkCollision(playerX, playerY, catX, catY) {
-  const collisionDistance = 35; // The collision distance in units
+  // //CHECK THAT THE PLAYER AND CAT ARE WITHIN ONE BLOCK DISTANCE TO EACH OTHER
+  // const collisionDistance = 35; // The collision distance in units
 
-  // Calculate the distance between the player and cat
-  const distance = calculateDistance(playerX, playerY, catX, catY);
+  // // Calculate the distance between the player and cat
+  // const distance = calculateDistance(playerX, playerY, catX, catY);
 
-  // Return true if they are within the collision distance
-  return distance <= collisionDistance;
+  // // Return true if they are within the collision distance
+  // return distance <= collisionDistance;
+
+  const distance = Math.abs(get_discrete_X(playerX) - get_discrete_X(catX)) + Math.abs(get_discrete_Y(playerY) - get_discrete_Y(catY));
+
+  return distance <= 1;
 }
 
-function checkCollisionAndRestart() {
+async function checkCollisionAndRestart() {
   for(let i = 0; i < myCats.length; i++) {
     if (!gameOver && checkCollision(player.position.x, player.position.y, myCats[i].position.x, myCats[i].position.y)) {
+      player.draw();
+      myCats[i].draw();
       gameOver = true;
+      await delay(1000);
       localStorage.setItem('currentScore', 0);
       console.log("game over LOL");
       updateScoreboard(true);
+
+      
       player.position.x = startingX + (Boundary.width * (map[0].length - 4));
       player.position.y = startingY + (Boundary.width * (map.length - 3))
       player.blockage = true;
@@ -883,95 +891,6 @@ function animate() {
 	c.clearRect(0, 0, canvas.width, canvas.height)
 
 	animate_iteration++;
-
-	// if (keys.w.pressed) {
-	// 	for (let i = 0; i < boundaries.length; i++) {
-	// 	const boundary = boundaries[i]
-	// 	if (circleCollidesWithRectangle({
-	// 		circle: {
-	// 			...player, 
-	// 			velocity: {
-	// 				x: 0,
-	// 				y: -player.my_velocity
-	// 			}
-	// 		},
-	// 		rectangle: boundary
-	// 		})
-	// 	) {
-	// 		// player.movement_in_progress = false;
-	// 		player.blockage = true;
-	// 		// player.velocity.y = 0
-	// 		break
-	// 	} else {
-	// 		player.blockage = false;
-	// 	}
-	// 	}
-	// }
-	// else if (keys.a.pressed) {
-	// 	for (let i = 0; i < boundaries.length; i++) {
-	// 	const boundary = boundaries[i]
-	// 	if (circleCollidesWithRectangle({
-	// 		circle: {
-	// 			...player, 
-	// 			velocity: {
-	// 				x: -player.my_velocity,
-	// 				y: 0
-	// 			}
-	// 		},
-	// 		rectangle: boundary
-	// 		})
-	// 	) {
-	// 		player.blockage = true;
-	// 		break
-	// 	} else {
-	// 		player.blockage = false;
-	// 	}
-	// 	}
-	// }
-	// else if (keys.s.pressed) {
-	// 	for (let i = 0; i < boundaries.length; i++) {
-	// 	const boundary = boundaries[i]
-	// 	if (circleCollidesWithRectangle({
-	// 		circle: {
-	// 			...player, 
-	// 			velocity: {
-	// 				x: 0,
-	// 				y: player.my_velocity
-	// 			}
-	// 		},
-	// 		rectangle: boundary
-	// 		})
-	// 	) {
-	// 		player.blockage = true;
-	// 		break
-	// 	} else {
-	// 		player.blockage = false;
-
-	// 	}
-	// 	}
-	// }
-	// else if (keys.d.pressed) {
-	// 	for (let i = 0; i < boundaries.length; i++) {
-	// 	const boundary = boundaries[i]
-	// 	if (circleCollidesWithRectangle({
-	// 		circle: {
-	// 			...player, 
-	// 			velocity: {
-	// 				x: player.my_velocity,
-	// 				y: 0
-	// 			}
-	// 		},
-	// 		rectangle: boundary
-	// 		})
-	// 	) {
-
-	// 		player.blockage = true;
-	// 		break
-	// 	} else {
-	// 		player.blockage = false;
-	// 	}
-	// 	}
-	// }
 
 	boundaries.forEach((boundary) => {
 		boundary.draw()
@@ -1009,10 +928,15 @@ function animate() {
   for(let i = 0; i < myCats.length; i++) {
     myCats[i].draw();
   }
+  if(playerCollides(map, get_discrete_Y(myCats[0].position.y), get_discrete_X(myCats[0].position.x))) {
+    console.log("PROBLEM");
+    console.log(myCats[0].rows);
+    console.log(myCats[0].col);
+  }
 
 	
 
-  if(animate_iteration % 25 === 0) {
+  if(animate_iteration % UPDATE_EVERY === 0) {
     for(let i = 0; i < myCats.length; i++) {
     if((myCats[i].rows.length !== 0) && (myCats[i].col.length !== 0) && (myCats[i].rows[myCats[i].path_iterations] !== -1) && (myCats[i].col[myCats[i].path_iterations] !== -1)) {
     
@@ -1020,9 +944,8 @@ function animate() {
     // myCats[i].update_iteration++;
     cat_speed = myCats[i].speed;
     
-    
-    direction_row = get_continuous_X(myCats[i].rows[myCats[i].path_iterations]) - myCats[i].position.y;
-    direction_col = get_continuous_Y(myCats[i].col[myCats[i].path_iterations]) - myCats[i].position.x;
+    let direction_row = get_continuous_X(myCats[i].rows[myCats[i].path_iterations]) - myCats[i].position.y;
+    let direction_col = get_continuous_Y(myCats[i].col[myCats[i].path_iterations]) - myCats[i].position.x;
 
     if (direction_row) {
         direction_row = direction_row > 0 ? 1 : -1;
@@ -1036,8 +959,8 @@ function animate() {
         direction_col = 0;
     }
 
-    new_row = myCats[i].position.y + direction_row * cat_speed;
-    new_col = myCats[i].position.x + direction_col * cat_speed;
+    let new_row = myCats[i].position.y + direction_row * cat_speed;
+    let new_col = myCats[i].position.x + direction_col * cat_speed;
 
 
     if (
@@ -1047,10 +970,10 @@ function animate() {
     (new_col > get_continuous_Y(myCats[i].col[myCats[i].path_iterations]) && direction_col < 0)
     ) {
       myCats[i].movement_in_progress = true;
-      go_to_row = get_continuous_X(myCats[i].rows[myCats[i].path_iterations]);
-      go_to_col = get_continuous_Y(myCats[i].col[myCats[i].path_iterations]);
-      row_vector = go_to_row - myCats[i].position.y;
-      col_vector = go_to_col - myCats[i].position.x;
+      let go_to_row = get_continuous_X(myCats[i].rows[myCats[i].path_iterations]);
+      let go_to_col = get_continuous_Y(myCats[i].col[myCats[i].path_iterations]);
+      let row_vector = go_to_row - myCats[i].position.y;
+      let col_vector = go_to_col - myCats[i].position.x;
 
       if(row_vector) {
         if(row_vector > 0) {
@@ -1076,10 +999,10 @@ function animate() {
     (new_col <= get_continuous_Y(myCats[i].col[myCats[i].path_iterations]) && direction_col < 0)
     )
     {
-      go_to_row = get_continuous_X(myCats[i].rows[myCats[i].path_iterations]);
-      go_to_col = get_continuous_Y(myCats[i].col[myCats[i].path_iterations]);
-      row_vector = go_to_row - myCats[i].position.y;
-      col_vector = go_to_col - myCats[i].position.x;
+      let go_to_row = get_continuous_X(myCats[i].rows[myCats[i].path_iterations]);
+      let go_to_col = get_continuous_Y(myCats[i].col[myCats[i].path_iterations]);
+      let row_vector = go_to_row - myCats[i].position.y;
+      let col_vector = go_to_col - myCats[i].position.x;
       if(row_vector) {
         myCats[i].position.y = go_to_row;
       }
@@ -1092,11 +1015,12 @@ function animate() {
     
   }
 
-    if(animate_iteration % 50 === 0) {
+    if(animate_iteration % UPDATE_EVERY === 0) {
       myCats[i].go_flag = true;
     }
 
-    if(animate_iteration === 1 || (myCats[i].go_flag && !myCats[i].movement_in_progress)) {
+    // if(animate_iteration === 1 || (myCats[i].go_flag && !myCats[i].movement_in_progress)) {
+    if(animate_iteration === 1 || (myCats[i].go_flag)) {
     //update CAT
 
     my_matrix = read_write_values(map)
@@ -1120,47 +1044,47 @@ function animate() {
   player.action(action);
 
   if(!gameOver && !playerCollides(map, player.future_row, player.future_col)) {
-  direction_row = get_continuous_X(player.future_row) - player.position.y;
-  direction_col = get_continuous_Y(player.future_col) - player.position.x;
+  let direction_row2 = get_continuous_X(player.future_row) - player.position.y;
+  let direction_col2 = get_continuous_Y(player.future_col) - player.position.x;
 
-  if (direction_row) {
-      direction_row = direction_row > 0 ? 1 : -1;
+  if (direction_row2) {
+      direction_row2 = direction_row2 > 0 ? 1 : -1;
   } else {
-      direction_row = 0;
+      direction_row2 = 0;
   }
 
-  if (direction_col) {
-      direction_col = direction_col > 0 ? 1 : -1;
+  if (direction_col2) {
+      direction_col2 = direction_col2 > 0 ? 1 : -1;
   } else {
-      direction_col = 0;
+      direction_col2 = 0;
   }
 
-  new_row = player.position.y + direction_row * VELOCITY;
-  new_col = player.position.x + direction_col * VELOCITY;
+  let new_row2 = player.position.y + direction_row2 * VELOCITY;
+  let new_col2 = player.position.x + direction_col2 * VELOCITY;
 
   if (
-  (new_row < get_continuous_X(player.future_row) && direction_row > 0) ||
-  (new_row > get_continuous_X(player.future_row) && direction_row < 0) ||
-  (new_col < get_continuous_Y(player.future_col) && direction_col > 0) ||
-  (new_col > get_continuous_Y(player.future_col) && direction_col < 0)
+  (new_row2 < get_continuous_X(player.future_row) && direction_row2 > 0) ||
+  (new_row2 > get_continuous_X(player.future_row) && direction_row2 < 0) ||
+  (new_col2 < get_continuous_Y(player.future_col) && direction_col2 > 0) ||
+  (new_col2 > get_continuous_Y(player.future_col) && direction_col2 < 0)
   ) {
     player.movement_in_progress = true;
-    go_to_row = get_continuous_X(player.future_row);
-    go_to_col = get_continuous_Y(player.future_col);
-    row_vector = go_to_row - player.position.y;
-    col_vector = go_to_col - player.position.x;
+    let go_to_row2 = get_continuous_X(player.future_row);
+    let go_to_col2 = get_continuous_Y(player.future_col);
+    let row_vector2 = go_to_row2 - player.position.y;
+    let col_vector2 = go_to_col2 - player.position.x;
 
 
-    if(row_vector) {
-      if(row_vector > 0) {
+    if(row_vector2) {
+      if(row_vector2 > 0) {
         player.position.y += VELOCITY;
       }
       else {
         player.position.y -= VELOCITY;
       }
     }
-    else if(col_vector) {
-      if(col_vector > 0) {
+    else if(col_vector2) {
+      if(col_vector2 > 0) {
         player.position.x += VELOCITY;
       }
       else {
@@ -1170,30 +1094,36 @@ function animate() {
   }
 
   else if(
-    (new_row >= get_continuous_X(player.future_row) && direction_row > 0) ||
-    (new_row <= get_continuous_X(player.future_row) && direction_row < 0) ||
-    (new_col >= get_continuous_Y(player.future_col) && direction_col > 0) ||
-    (new_col <= get_continuous_Y(player.future_col) && direction_col < 0)
+    (new_row2 >= get_continuous_X(player.future_row) && direction_row2 > 0) ||
+    (new_row2 <= get_continuous_X(player.future_row) && direction_row2 < 0) ||
+    (new_col2 >= get_continuous_Y(player.future_col) && direction_col2 > 0) ||
+    (new_col2 <= get_continuous_Y(player.future_col) && direction_col2 < 0)
     )
     {
-      go_to_row = get_continuous_X(player.future_row);
-      go_to_col = get_continuous_Y(player.future_col);
-      row_vector = go_to_row - player.position.y;
-      col_vector = go_to_col - player.position.x;
-      if(row_vector) {
-        player.position.y = go_to_row;
+      let go_to_row2 = get_continuous_X(player.future_row);
+      let go_to_col2 = get_continuous_Y(player.future_col);
+      let row_vector2 = go_to_row2 - player.position.y;
+      let col_vector2 = go_to_col2 - player.position.x;
+      if(row_vector2) {
+        player.position.y = go_to_row2;
       }
-      else if(col_vector) {
-        player.position.x = go_to_col;
+      else if(col_vector2) {
+        player.position.x = go_to_col2;
       }
       player.movement_in_progress = false;
     }
   }
   }
 
+  
+
 }
 
 animate()
+
+function delay(duration) {
+  return new Promise(resolve => setTimeout(resolve, duration));
+}
 
 
 // window.addEventListener('keydown', ({key}) => {
