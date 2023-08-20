@@ -7,9 +7,13 @@ let myCats = [];      //an array of cats
 // let update_every = 500; 
 //level 0 - sleep speed, level 1 - walk speed, level 2 jog speed, level 3 run speed
 // let my_speeds = [[0.5, 0.75, 1, 1.25, 1.5], [2, 2.25, 2.5], [3, 3.25, 3.5], [4, 4.25, 4.5]]  
-let my_speeds = [[0.5], [1.5], [2.5], [3.5]]
-let update_every = [[1500, 2500, 3200, 4000], [1000, 2000, 3000, 4000], [1800, 2800, 3800, 4800]];
-let UPDATE_EVERY = 10;
+// let my_speeds = [[0.5], [1.5], [2.5], [3.5]]
+// let update_every = [[1500, 2500, 3200, 4000], [1000, 2000, 3000, 4000], [1800, 2800, 3800, 4800]];
+let UPDATE_EVERY = 2;
+let CATCH_PENALTY = 500;
+let MOVE_PENALTY = 1;
+let ESCAPE_REWARD = 1000;
+let reward;
 
 const currentScore = parseInt(localStorage.getItem('currentScore'));
 
@@ -18,9 +22,10 @@ let numCats = 1;
 
 
 //MOUSE REINFORCEMENT LEARNING
-let EPSILON = 0.9;
+let epsilon = 0.95;
 const EPS_DECAY = 0.9998;
 const DISCOUNT = 0.95;
+const LEARNING_RATE = 0.1;
 
 // Declare numCats as a global variable
 window.numCats = numCats;
@@ -198,19 +203,48 @@ function playerCollides(inputArray, row, col) {
     return innerBox[row][col] === '-';
 }
 
+function getRandomEmptyCoordinate(inputArray) {
+  const innerBox = [];
+
+  // Trim the inputArray to a 13x13 inner box
+  for (let i = 1; i < 14; i++) {
+    innerBox.push(inputArray[i].slice(1, 14));
+  }
+
+  const emptyCoordinates = [];
+
+  // Find all empty coordinates in the inner box
+  for (let y = 0; y < innerBox.length; y++) {
+    for (let x = 0; x < innerBox[y].length; x++) {
+      if (innerBox[y][x] === ' ') {
+        emptyCoordinates.push({ x, y });
+      }
+    }
+  }
+
+  // Check if there are empty coordinates
+  if (emptyCoordinates.length === 0) {
+    return null; // No empty coordinates found
+  }
+
+  // Randomly select an empty coordinate
+  const randomIndex = Math.floor(Math.random() * emptyCoordinates.length);
+  return emptyCoordinates[randomIndex];
+}
+
 // console.log(extractInnerBox(map));
 
 // Initialize Q-table
   const qTable = {};
-  for (let i = - + 1; i < (map.length - 2); i++) {
+  for (let i = -(map.length - 2) + 1; i < (map.length - 2); i++) {
     for (let ii = -(map.length - 2) + 1; ii < (map.length - 2); ii++) {
       for (let iii = -(map.length - 2) + 1; iii < (map.length - 2); iii++) {
         for (let iiii = -(map.length - 2) + 1; iiii < (map.length - 2); iiii++) {
-          qTable[`${i}_${ii}_${iii}_${iiii}`] = [
+          qTable[[[i, ii], [iii, iiii]]] = [
             Math.random() * -5,
             Math.random() * -5,
             Math.random() * -5,
-            Math.random() * -5,
+            Math.random() * -5
           ];
         }
       }
@@ -427,6 +461,10 @@ class Player {
       this.future_row = get_discrete_Y(this.position.y);
       this.future_col = get_discrete_X(this.position.x) + 1;
     }
+  }
+
+  subtract(x, y) {
+    return [get_discrete_X(this.position.x) - x, get_discrete_Y(this.position.y) - y];
   }
 
 }
@@ -850,20 +888,28 @@ async function checkCollisionAndRestart() {
       player.draw();
       myCats[i].draw();
       gameOver = true;
-      await delay(1000);
+      // await delay(1000);
       localStorage.setItem('currentScore', 0);
       console.log("game over LOL");
       updateScoreboard(true);
+      console.log(epsilon);
+      // player.position.x = startingX + (Boundary.width * (map[0].length - 4));
+      // player.position.y = startingY + (Boundary.width * (map.length - 3))
+      let myCoordinate = getRandomEmptyCoordinate(map)
+      console.log(myCoordinate);
+      player.position.x = startingX + Boundary.width * myCoordinate.x; //get_continuous_X(myCoordinate.x);//get_continuous_X(myCoordinate.x);
+      player.position.y = startingY + Boundary.width * myCoordinate.y; //get_continuous_Y(myCoordinate.y);
 
-      
-      player.position.x = startingX + (Boundary.width * (map[0].length - 4));
-      player.position.y = startingY + (Boundary.width * (map.length - 3))
       player.blockage = true;
 
       myCats[0].position.x = startingX;
       myCats[0].position.y = startingY;
-      
+      return true;
     }
+    else {
+      return false;
+    }
+
   }
 }
 
@@ -878,14 +924,6 @@ function getRandomSpeed(arr) {
 
 function animate() {
   gameOver = false;
-  checkCollisionAndRestart();
-  updateScoreboard(false);
-
-  if(player.position.y < startingY) {
-    updateScoreboard(true);
-    window.location.reload();
-    return;
-  }
   
 	requestAnimationFrame(animate)
 	c.clearRect(0, 0, canvas.width, canvas.height)
@@ -1037,13 +1075,19 @@ function animate() {
   }
   }
   
-  const obs = `${get_discrete_X(player.position.x)}_${get_discrete_Y(player.position.y)}_${get_discrete_X(myCats[0].position.x)}_${get_discrete_Y(myCats[0].position.y)}`;
+  const obs = [player.subtract(1, 0), player.subtract(get_discrete_X(myCats[0].position.x), get_discrete_Y(myCats[0].position.y))];
 
-  action = Math.floor(Math.random() * 4);
+  if (Math.random() > epsilon) {
+    action = Object.keys(qTable[obs]).reduce((a, b) => qTable[obs][a] > qTable[obs][b] ? a : b);
+  } else {
+    action = Math.floor(Math.random() * 4);
+  }
   // console.log(action);
   player.action(action);
 
+  let collide = false;
   if(!gameOver && !playerCollides(map, player.future_row, player.future_col)) {
+  
   let direction_row2 = get_continuous_X(player.future_row) - player.position.y;
   let direction_col2 = get_continuous_Y(player.future_col) - player.position.x;
 
@@ -1113,10 +1157,48 @@ function animate() {
       player.movement_in_progress = false;
     }
   }
+  else {
+    collide = true;
   }
 
-  
+  if(checkCollisionAndRestart()) {
+    player.future_row = -1;
+    player.future_col = -1;
+    reward = -CATCH_PENALTY;
+  }
+  // else if (player.position.y < startingY) {
+  else if (get_discrete_X(player.position.x) === 1 && get_discrete_Y(player.position.y) === 0) {
+    updateScoreboard(true);
+    reward = ESCAPE_REWARD;
+    console.log("ESCAPED");
+    player.position.x = startingX + Boundary.width * myCoordinate.x; //get_continuous_X(myCoordinate.x);//get_continuous_X(myCoordinate.x);
+    player.position.y = startingY + Boundary.width * myCoordinate.y; //get_continuous_Y(myCoordinate.y);
+    // window.location.reload();
+    // return;
+  }
+  else if(collide) {
+    reward = -10 * MOVE_PENALTY;
+  }
+  else {
+    reward = MOVE_PENALTY;
+  }
+  updateScoreboard(false);
 
+  const newObs = [player.subtract(1, 0), player.subtract(get_discrete_X(myCats[0].position.x), get_discrete_Y(myCats[0].position.y))];
+  const maxFutureQ = Math.max(...Object.values(qTable[newObs]));
+  const currentQ = qTable[obs][action];
+
+  if (reward === ESCAPE_REWARD) {
+    newQ = ESCAPE_REWARD;
+  } else {
+    newQ = (1 - LEARNING_RATE) * currentQ + LEARNING_RATE * (reward + DISCOUNT * maxFutureQ);
+  }
+
+  qTable[obs][action] = newQ;
+
+  epsilon *= EPS_DECAY;
+
+  }
 }
 
 animate()
