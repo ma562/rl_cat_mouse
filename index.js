@@ -16,6 +16,7 @@ let ESCAPE_REWARD = 500;
 let CAT_MOVE = true;
 let reward;
 let show = false;
+let slow_down_frequency = 5;
 let show_frequency = 1;
 
 const currentScore = parseInt(localStorage.getItem('currentScore'));
@@ -1213,10 +1214,10 @@ function animate() {
   }
   else {
     my_matrix = read_write_values(map)
-    fastestTimes(my_matrix, get_discrete_Y(myCats[i].position.y), get_discrete_X(myCats[i].position.x), get_discrete_Y(player.position.y), get_discrete_X(player.position.x), myCats[i].rows, myCats[i].col)
+    fastestTimes(my_matrix, get_discrete_Y(myCats[0].position.y), get_discrete_X(myCats[0].position.x), get_discrete_Y(player.position.y), get_discrete_X(player.position.x), myCats[0].rows, myCats[0].col)
     let row_length = myCats[i].rows.length
-    fastestTimes(my_matrix, 1, 0, get_discrete_Y(player.position.y), get_discrete_X(player.position.x), myCats[i].rows, myCats[i].col)
-    reward =  -(myCats[i].rows.length - row_length);
+    fastestTimes(my_matrix, 1, 0, get_discrete_Y(player.position.y), get_discrete_X(player.position.x), myCats[0].rows, myCats[0].col)
+    reward =  -(myCats[0].rows.length - row_length);
   }
   updateScoreboard(false);
 
@@ -1248,8 +1249,17 @@ function animate() {
     console.log(episode);
     console.log(epsilon);
     show = false;
+
+    if(episode % slow_down_frequency === 0) {
+      UPDATE_EVERY = 10;
+    }
+    else {
+      UPDATE_EVERY = 1;
+    }
+
     if(episode % show_frequency === 0) {
       show = true;
+
     }
   }
 
