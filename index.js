@@ -18,6 +18,7 @@ let reward;
 let show = false;
 let slow_down_frequency = 5;
 let show_frequency = 1;
+let just_rearranged = false;
 
 const currentScore = parseInt(localStorage.getItem('currentScore'));
 
@@ -995,7 +996,7 @@ function animate() {
 
   if(animate_iteration % UPDATE_EVERY === 0) {
     episode_iteration++;
-    if(CAT_MOVE) {
+    if(CAT_MOVE && !just_rearranged) {
         for(let i = 0; i < myCats.length; i++) {
         if((myCats[i].rows.length !== 0) && (myCats[i].col.length !== 0) && (myCats[i].rows[myCats[i].path_iterations] !== -1) && (myCats[i].col[myCats[i].path_iterations] !== -1)) {
         
@@ -1113,7 +1114,7 @@ function animate() {
   player.action(action);
 
   let collide = false;
-  if(!gameOver && !playerCollides(map, player.future_row, player.future_col)) {
+  if(!gameOver && !playerCollides(map, player.future_row, player.future_col) && !just_rearranged) {
   
   let direction_row2 = get_continuous_X(player.future_row) - player.position.y;
   let direction_col2 = get_continuous_Y(player.future_col) - player.position.x;
@@ -1193,6 +1194,7 @@ function animate() {
     player.future_row = -1;
     player.future_col = -1;
     reward = -CATCH_PENALTY;
+    just_rearranged = true;
   }
   // else if (player.position.y < startingY) {
   else if (get_discrete_X(player.position.x) === 1 && get_discrete_Y(player.position.y) === 0) {
@@ -1208,7 +1210,7 @@ function animate() {
     console.log(myCoordinate);
     myCats[0].position.x = startingX + Boundary.width * myCoordinate.x; //get_continuous_X(myCoordinate.x);//get_continuous_X(myCoordinate.x);
     myCats[0].position.y = startingY + Boundary.width * myCoordinate.y; //get_continuous_Y(myCoordinate.y);
-
+    just_rearranged = true;
     // window.location.reload();
     // return;
   }
@@ -1218,6 +1220,7 @@ function animate() {
     let row_length = myCats[i].rows.length
     fastestTimes(my_matrix, 1, 0, get_discrete_Y(player.position.y), get_discrete_X(player.position.x), myCats[0].rows, myCats[0].col)
     reward =  -(myCats[0].rows.length - row_length);
+    just_rearranged = false;
   }
   updateScoreboard(false);
 
@@ -1259,7 +1262,6 @@ function animate() {
 
     if(episode % show_frequency === 0) {
       show = true;
-
     }
   }
 
